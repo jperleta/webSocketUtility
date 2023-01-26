@@ -46,8 +46,10 @@ class SocketInvoker: NSObject, WebSocketConnection {
     func connect() {
         webSocketTask?.resume()
         
-        listen()
-        keepConnectionLive()
+        Task {
+            await listen()
+            keepConnectionLive()
+        }
     }
     
     func disconnect() {
@@ -71,23 +73,24 @@ class SocketInvoker: NSObject, WebSocketConnection {
     }
     
     /// Receive method is only called once. If we want to receive another message, we need to call receive again.
-    private func listen()  {
-        webSocketTask?.receive { result in
-            switch result {
-            case .failure(let error):
-                self.delegate?.onError(connection: self, error: error)
-            case .success(let message):
-                switch message {
-                case .string(let text):
-                    self.delegate?.onMessage(connection: self, text: text)
-                case .data(let data):
-                    self.delegate?.onMessage(connection: self, data: data)
-                @unknown default:
-                    break
-                }
-                
-                self.listen()
+    private func listen() async {
+        guard webSocketTask?.closeCode == .invalid else { return }
+        
+        do {
+            let message = try await webSocketTask?.receive()
+            
+            switch message {
+            case .string(let text):
+                delegate?.onMessage(connection: self, text: text)
+            case .data(let data):
+                delegate?.onMessage(connection: self, data: data)
+            @unknown default:
+                break
             }
+            
+            await listen()
+        } catch {
+            self.delegate?.onError(connection: self, error: error)
         }
     }
     
