@@ -8,3 +8,5 @@ This utility supports:
 - Disconnecting from WebSocket session.
 - Sending String or Data messages through the WebSocket.
 - Processing received messages sent through the WebSocket.
+
+Note that the resulting code has only had relatively limited testing done.
